@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель управления Шоу</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #222; color: #fff; padding: 20px; max-width: 600px; margin: 0 auto; }
+        h1, h2 { color: #ff007f; }
+        button { background: #ff007f; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px 0; width: 100%; font-weight: bold; }
+        button:hover { background: #e0006c; }
+        button.secondary { background: #444; }
+        button.secondary:hover { background: #555; }
+        .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
+    </style>
+</head>
+<body>
+
+    <h1>Управление «Танцевальным Конструктором»</h1>
+    
+    <div class="status-box">
+        <p><strong>Текущий статус:</strong> <span id="statusText">Ожидание запуска</span></p>
+        <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
+    </div>
+
+    <h2>1. Подготовка шоу (Сделать перед началом)</h2>
+    <button class="secondary" onclick="resetDatabase()">Сбросить базу и загрузить 10 вариантов</button>
+
+    <h2>2. Игровой процесс</h2>
+    <button onclick="startVoting()">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
+    <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
+
+    <!-- Подключение Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
+
+        const firebaseConfig = {
+  apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
+  authDomain: "dance-constructor.firebaseapp.com",
+  databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "dance-constructor",
+  storageBucket: "dance-constructor.firebasestorage.app",
+  messagingSenderId: "604020322730",
+  appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
+};
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Список ваших 10 вариантов (Вы можете переименовать их прямо здесь!)
+        const initialOptions = {
+            "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
+            "opt2": { id: "opt2", name: "Хип-хоп баттл", votes: 0, active: true },
+            "opt3": { id: "opt3", name: "Современный контемп", votes: 0, active: true },
+            "opt4": { id: "opt4", name: "Дерзкий вог (Vogue)", votes: 0, active: true },
+            "opt5": { id: "opt5", name: "Зажигательная латина", votes: 0, active: true },
+            "opt6": { id: "opt6", name: "Уличный брейк-данс", votes: 0, active: true },
+            "opt7": { id: "opt7", name: "Классический вальс", votes: 0, active: true },
+            "opt8": { id: "opt8", name: "Джаз-фанк взрыв", votes: 0, active: true },
+            "opt9": { id: "opt9", name: "Ретро Диско", votes: 0, active: true },
+            "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
+        };
+
+        // Функция сброса всей базы данных
+        window.resetDatabase = function() {
+            if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
+                set(ref(db, 'show/'), {
+                    status: "waiting", // waiting, active, finished
+                    timer: 15,
+                    winner: ""
+                }).then(() => {
+                    set(ref(db, 'options/'), initialOptions);
+                    alert("База данных успешно обновлена! 10 вариантов готовы.");
+                });
+            }
+        }
+
+        // Запуск 15-секундного таймера
+        window.startVoting = function() {
+            // Обнуляем голоса у всех ОСТАВШИХСЯ (активных) вариантов перед новым раундом
+            get(ref(db, 'options')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
+                    for (let key in options) {
+                        if (options[key].active) {
+                            update(ref(db, `options/${key}`), { votes: 0 });
+                        }
+                    }
+                }
+                
+                // Переводим статус в "активно" и запускаем обратный отсчет
+                update(ref(db, 'show'), { status: "active", timer: 15, winner: "" });
+                
+                let timeLeft = 15;
+                const interval = setInterval(() => {
+                    timeLeft--;
+                    update(ref(db, 'show'), { timer: timeLeft });
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        endVoting();
+                    }
+                }, 1000);
+            });
+        }
+
+        // Автоматическое окончание таймера: считаем победителя
+        function endVoting() {
+            get(ref(db, 'options')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
+                    let maxVotes = -1;
+                    let winnerId = "";
+                    let winnerName = "Никто не проголосовал";
+
+                    for (let key in options) {
+                        if (options[key].active && options[key].votes > maxVotes) {
+                            maxVotes = options[key].votes;
+                            winnerId = key;
+                            winnerName = options[key].name;
+                        }
+                    }
+
+                    update(ref(db, 'show'), { 
+                        status: "finished", 
+                        winner: winnerName,
+                        winnerId: winnerId
+                    });
+                }
+            });
+        }
+
+        // Кнопка перехода к следующему раунду (удаляет текущего победителя)
+        window.nextRound = function() {
+            get(ref(db, 'show')).then((snapshot) => {
+                const showData = snapshot.val();
+                if (showData && showData.winnerId) {
+                    // Делаем победивший вариант НЕАКТИВНЫМ
+                    update(ref(db, `options/${showData.winnerId}`), { active: false }).then(() => {
+                        // Переводим шоу обратно в режим ожидания нового раунда
+                        update(ref(db, 'show'), { status: "waiting", winner: "", winnerId: "", timer: 15 });
+                        alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
+                    });
+                } else {
+                    alert("Сначала запустите голосование и дождитесь определения победителя!");
+                }
+            });
+        }
+
+        // Следим за изменениями статуса на экране админа в реальном времени
+        onValue(ref(db, 'show'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                document.getElementById('timerText').innerText = data.timer;
+                if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
+                if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
+                if (data.status === "finished") document.getElementById('statusText').innerText = `Раунд завершен! Победил: ${data.winner}`;
+            }
+        });
+    </script>
+</body>
+</html>
