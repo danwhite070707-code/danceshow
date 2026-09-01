@@ -34,15 +34,16 @@
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
 
+        // ТОЧНЫЙ КОНФИГ ДЛЯ ВАШЕГО ПРОЕКТА DANCE-CONSTRUCTOR
         const firebaseConfig = {
-  apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
-  authDomain: "dance-constructor.firebaseapp.com",
-  databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "dance-constructor",
-  storageBucket: "dance-constructor.firebasestorage.app",
-  messagingSenderId: "604020322730",
-  appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
-};
+          apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
+          authDomain: "dance-constructor.firebaseapp.com",
+          databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "dance-constructor",
+          storageBucket: "dance-constructor.firebasestorage.app",
+          messagingSenderId: "604020322730",
+          appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
@@ -65,19 +66,20 @@
         window.resetDatabase = function() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
                 set(ref(db, 'show/'), {
-                    status: "waiting", // waiting, active, finished
+                    status: "waiting", 
                     timer: 15,
                     winner: ""
                 }).then(() => {
                     set(ref(db, 'options/'), initialOptions);
                     alert("База данных успешно обновлена! 10 вариантов готовы.");
+                }).catch((error) => {
+                    alert("Ошибка записи в базу: " + error.message);
                 });
             }
         }
 
         // Запуск 15-секундного таймера
         window.startVoting = function() {
-            // Обнуляем голоса у всех ОСТАВШИХСЯ (активных) вариантов перед новым раундом
             get(ref(db, 'options')).then((snapshot) => {
                 if (snapshot.exists()) {
                     const options = snapshot.val();
@@ -88,7 +90,6 @@
                     }
                 }
                 
-                // Переводим статус в "активно" и запускаем обратный отсчет
                 update(ref(db, 'show'), { status: "active", timer: 15, winner: "" });
                 
                 let timeLeft = 15;
@@ -111,7 +112,7 @@
                     const options = snapshot.val();
                     let maxVotes = -1;
                     let winnerId = "";
-                    let winnerName = "Никто не проголосовал";
+                    let winnerName = "Никто не проголосовать";
 
                     for (let key in options) {
                         if (options[key].active && options[key].votes > maxVotes) {
@@ -135,9 +136,7 @@
             get(ref(db, 'show')).then((snapshot) => {
                 const showData = snapshot.val();
                 if (showData && showData.winnerId) {
-                    // Делаем победивший вариант НЕАКТИВНЫМ
                     update(ref(db, `options/${showData.winnerId}`), { active: false }).then(() => {
-                        // Переводим шоу обратно в режим ожидания нового раунда
                         update(ref(db, 'show'), { status: "waiting", winner: "", winnerId: "", timer: 15 });
                         alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
                     });
