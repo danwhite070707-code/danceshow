@@ -29,7 +29,7 @@
     <button onclick="startVoting()">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
     <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
 
-    <!-- Подключение Firebase -->
+    <!-- Подключение Firebase с правильным адресом WWW -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
@@ -37,8 +37,8 @@
         // ТОЧНЫЙ КОНФИГ ДЛЯ ВАШЕГО ПРОЕКТА DANCE-CONSTRUCTOR
         const firebaseConfig = {
           apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
-          authDomain: "dance-constructor.firebaseapp.com",
-          databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
+          authDomain: "://firebaseapp.com",
+          databaseURL: "https://firebasedatabase.app",
           projectId: "dance-constructor",
           storageBucket: "dance-constructor.firebasestorage.app",
           messagingSenderId: "604020322730",
@@ -48,7 +48,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Список ваших 10 вариантов (Вы можете переименовать их прямо здесь!)
+        // Список ваших 10 вариантов
         const initialOptions = {
             "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
             "opt2": { id: "opt2", name: "Хип-хоп баттл", votes: 0, active: true },
@@ -112,7 +112,7 @@
                     const options = snapshot.val();
                     let maxVotes = -1;
                     let winnerId = "";
-                    let winnerName = "Никто не проголосовать";
+                    let winnerName = "Никто не проголосовал";
 
                     for (let key in options) {
                         if (options[key].active && options[key].votes > maxVotes) {
