@@ -12,28 +12,28 @@
         button.secondary:hover { background: #555; }
         .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
     </style>
-
-    <!-- Подключаем Firebase через надежные классические скрипты -->
-    <script src="https://gstatic.com"></script>
-    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
     <h1>Управление «Танцевальным Конструктором»</h1>
     
     <div class="status-box">
-        <p><strong>Текущий статус:</strong> <span id="statusText">Загрузка системы...</span></p>
+        <p><strong>Текущий статус:</strong> <span id="statusText">Связь с базой данных...</span></p>
         <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
     </div>
 
     <h2>1. Подготовка шоу (Сделать перед началом)</h2>
-    <button class="secondary" onclick="resetDatabase()">Сбросить базу и загрузить 10 вариантов</button>
+    <button class="secondary" id="btnReset">Сбросить базу и загрузить 10 вариантов</button>
 
     <h2>2. Игровой процесс</h2>
-    <button onclick="startVoting()">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
-    <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
+    <button id="btnStart">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
+    <button class="secondary" id="btnNext">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
 
-    <script>
+    <!-- Полная изоляция кода внутри официального модуля Google Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://gstatic.com";
+        import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
+
         // ТОЧНЫЙ КОНФИГ ДЛЯ ВАШЕГО ПРОЕКТА DANCE-CONSTRUCTOR
         const firebaseConfig = {
           apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
@@ -45,9 +45,9 @@
           appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
         };
 
-        // Инициализация базы данных
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        // Инициализация
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
         // Список ваших 10 вариантов
         const initialOptions = {
@@ -63,41 +63,40 @@
             "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
         };
 
-        // Функция сброса всей базы данных
-        function resetDatabase() {
+        // Привязываем функции к кнопкам напрямую в коде модуля
+        document.getElementById('btnReset').onclick = function() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
-                db.ref('show/').set({
+                set(ref(db, 'show/'), {
                     status: "waiting", 
                     timer: 15,
                     winner: ""
                 }).then(() => {
-                    return db.ref('options/').set(initialOptions);
+                    return set(ref(db, 'options/'), initialOptions);
                 }).then(() => {
                     alert("База данных успешно обновлена! 10 вариантов готовы.");
                 }).catch((error) => {
-                    alert("Ошибка записи в базу: " + error.message);
+                    alert("Ошибка записи: " + error.message);
                 });
             }
-        }
+        };
 
-        // Запуск 15-секундного таймера
-        function startVoting() {
-            db.ref('options').once('value').then((snapshot) => {
+        document.getElementById('btnStart').onclick = function() {
+            get(ref(db, 'options')).then((snapshot) => {
                 if (snapshot.exists()) {
                     const options = snapshot.val();
                     for (let key in options) {
                         if (options[key].active) {
-                            db.ref(`options/${key}`).update({ votes: 0 });
+                            update(ref(db, `options/${key}`), { votes: 0 });
                         }
                     }
                 }
                 
-                db.ref('show').update({ status: "active", timer: 15, winner: "" });
+                update(ref(db, 'show'), { status: "active", timer: 15, winner: "" });
                 
                 let timeLeft = 15;
                 const interval = setInterval(() => {
                     timeLeft--;
-                    db.ref('show').update({ timer: timeLeft });
+                    update(ref(db, 'show'), { timer: timeLeft });
                     
                     if (timeLeft <= 0) {
                         clearInterval(interval);
@@ -105,11 +104,10 @@
                     }
                 }, 1000);
             });
-        }
+        };
 
-        // Автоматическое окончание таймера: считаем победителя
         function endVoting() {
-            db.ref('options').once('value').then((snapshot) => {
+            get(ref(db, 'options')).then((snapshot) => {
                 if (snapshot.exists()) {
                     const options = snapshot.val();
                     let maxVotes = -1;
@@ -124,7 +122,7 @@
                         }
                     }
 
-                    db.ref('show').update({ 
+                    update(ref(db, 'show'), { 
                         status: "finished", 
                         winner: winnerName,
                         winnerId: winnerId
@@ -133,23 +131,22 @@
             });
         }
 
-        // Кнопка перехода к следующему раунду
-        function nextRound() {
-            db.ref('show').once('value').then((snapshot) => {
+        document.getElementById('btnNext').onclick = function() {
+            get(ref(db, 'show')).then((snapshot) => {
                 const showData = snapshot.val();
                 if (showData && showData.winnerId) {
-                    db.ref(`options/${showData.winnerId}`).update({ active: false }).then(() => {
-                        db.ref('show').update({ status: "waiting", winner: "", winnerId: "", timer: 15 });
-                        alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
+                    update(ref(db, `options/${showData.winnerId}`), { active: false }).then(() => {
+                        update(ref(db, 'show'), { status: "waiting", winner: "", winnerId: "", timer: 15 });
+                        alert(`Вариант "${showData.winner}" успешно удален из списка! можно запускать следующий раунд.`);
                     });
                 } else {
                     alert("Сначала запустите голосование и дождитесь определения победителя!");
                 }
             });
-        }
+        };
 
-        // Следим за изменениями статуса в реальном времени
-        db.ref('show').on('value', (snapshot) => {
+        // Живое обновление экрана
+        onValue(ref(db, 'show'), (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 document.getElementById('timerText').innerText = data.timer;
