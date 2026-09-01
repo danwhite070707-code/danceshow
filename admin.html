@@ -12,13 +12,17 @@
         button.secondary:hover { background: #555; }
         .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
     </style>
+
+    <!-- Подключаем Firebase через надежные классические скрипты -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
 </head>
 <body>
 
     <h1>Управление «Танцевальным Конструктором»</h1>
     
     <div class="status-box">
-        <p><strong>Текущий статус:</strong> <span id="statusText">Ожидание запуска</span></p>
+        <p><strong>Текущий статус:</strong> <span id="statusText">Загрузка системы...</span></p>
         <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
     </div>
 
@@ -29,11 +33,7 @@
     <button onclick="startVoting()">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
     <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
 
-    <!-- Подключение Firebase с правильным адресом WWW -->
-    <script type="module">
-        import { initializeApp } from "https://gstatic.com";
-        import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
-
+    <script>
         // ТОЧНЫЙ КОНФИГ ДЛЯ ВАШЕГО ПРОЕКТА DANCE-CONSTRUCTOR
         const firebaseConfig = {
           apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
@@ -45,8 +45,9 @@
           appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        // Инициализация базы данных
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
         // Список ваших 10 вариантов
         const initialOptions = {
@@ -63,14 +64,15 @@
         };
 
         // Функция сброса всей базы данных
-        window.resetDatabase = function() {
+        function resetDatabase() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
-                set(ref(db, 'show/'), {
+                db.ref('show/').set({
                     status: "waiting", 
                     timer: 15,
                     winner: ""
                 }).then(() => {
-                    set(ref(db, 'options/'), initialOptions);
+                    return db.ref('options/').set(initialOptions);
+                }).then(() => {
                     alert("База данных успешно обновлена! 10 вариантов готовы.");
                 }).catch((error) => {
                     alert("Ошибка записи в базу: " + error.message);
@@ -79,23 +81,23 @@
         }
 
         // Запуск 15-секундного таймера
-        window.startVoting = function() {
-            get(ref(db, 'options')).then((snapshot) => {
+        function startVoting() {
+            db.ref('options').once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const options = snapshot.val();
                     for (let key in options) {
                         if (options[key].active) {
-                            update(ref(db, `options/${key}`), { votes: 0 });
+                            db.ref(`options/${key}`).update({ votes: 0 });
                         }
                     }
                 }
                 
-                update(ref(db, 'show'), { status: "active", timer: 15, winner: "" });
+                db.ref('show').update({ status: "active", timer: 15, winner: "" });
                 
                 let timeLeft = 15;
                 const interval = setInterval(() => {
                     timeLeft--;
-                    update(ref(db, 'show'), { timer: timeLeft });
+                    db.ref('show').update({ timer: timeLeft });
                     
                     if (timeLeft <= 0) {
                         clearInterval(interval);
@@ -107,7 +109,7 @@
 
         // Автоматическое окончание таймера: считаем победителя
         function endVoting() {
-            get(ref(db, 'options')).then((snapshot) => {
+            db.ref('options').once('value').then((snapshot) => {
                 if (snapshot.exists()) {
                     const options = snapshot.val();
                     let maxVotes = -1;
@@ -122,7 +124,7 @@
                         }
                     }
 
-                    update(ref(db, 'show'), { 
+                    db.ref('show').update({ 
                         status: "finished", 
                         winner: winnerName,
                         winnerId: winnerId
@@ -131,13 +133,13 @@
             });
         }
 
-        // Кнопка перехода к следующему раунду (удаляет текущего победителя)
-        window.nextRound = function() {
-            get(ref(db, 'show')).then((snapshot) => {
+        // Кнопка перехода к следующему раунду
+        function nextRound() {
+            db.ref('show').once('value').then((snapshot) => {
                 const showData = snapshot.val();
                 if (showData && showData.winnerId) {
-                    update(ref(db, `options/${showData.winnerId}`), { active: false }).then(() => {
-                        update(ref(db, 'show'), { status: "waiting", winner: "", winnerId: "", timer: 15 });
+                    db.ref(`options/${showData.winnerId}`).update({ active: false }).then(() => {
+                        db.ref('show').update({ status: "waiting", winner: "", winnerId: "", timer: 15 });
                         alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
                     });
                 } else {
@@ -146,14 +148,16 @@
             });
         }
 
-        // Следим за изменениями статуса на экране админа в реальном времени
-        onValue(ref(db, 'show'), (snapshot) => {
+        // Следим за изменениями статуса в реальном времени
+        db.ref('show').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 document.getElementById('timerText').innerText = data.timer;
                 if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
                 if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
                 if (data.status === "finished") document.getElementById('statusText').innerText = `Раунд завершен! Победил: ${data.winner}`;
+            } else {
+                document.getElementById('statusText').innerText = "База пуста. Нажмите кнопку сброса ниже.";
             }
         });
     </script>
