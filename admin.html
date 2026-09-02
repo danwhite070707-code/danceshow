@@ -12,17 +12,13 @@
         button.secondary:hover { background: #555; }
         .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
     </style>
-
-    <!-- Подключаем Firebase -->
-    <script src="https://cloudflare.com"></script>
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
     <h1>Управление «Танцевальным Конструктором»</h1>
     
     <div class="status-box">
-        <p><strong>Текущий статус:</strong> <span id="statusText">Подключение к шоу...</span></p>
+        <p><strong>Текущий статус:</strong> <span id="statusText">Режим HTTP-запросов</span></p>
         <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
     </div>
 
@@ -34,23 +30,8 @@
     <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
 
     <script>
-        const firebaseConfig = {
-          apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
-          authDomain: "://firebaseapp.com",
-          databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "dance-constructor",
-          storageBucket: "dance-constructor.firebasestorage.app",
-          messagingSenderId: "604020322730",
-          appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
-        };
-
-        // Инициализация
-        try {
-            firebase.initializeApp(firebaseConfig);
-            var database = firebase.database();
-        } catch(e) {
-            alert("Ошибка инициализации Firebase: " + e.message);
-        }
+        // Прямой адрес вашей базы данных для жесткой отправки
+        const dbUrl = "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app";
 
         const initialOptions = {
             "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
@@ -65,54 +46,68 @@
             "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
         };
 
+        // Прямой метод отправки данных в Firebase без библиотек
+        function sendToFirebase(path, data) {
+            return fetch(`${dbUrl}/${path}.json`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        }
+
         function resetDatabase() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
-                console.log("Попытка записи в базу...");
-                database.ref('show/').set({
-                    status: "waiting", 
-                    timer: 15,
-                    winner: ""
-                }).then(() => {
-                    return database.ref('options/').set(initialOptions);
-                }).then(() => {
+                
+                // Отправляем статус шоу
+                sendToFirebase('show', { status: "waiting", timer: 15, winner: "" })
+                .then(() => {
+                    // Отправляем 10 танцев
+                    return sendToFirebase('options', initialOptions);
+                })
+                .then(() => {
                     alert("УРА! База данных успешно обновлена! Проверяйте вкладку Data.");
-                }).catch((error) => {
-                    // ЕСЛИ БУДЕТ ОШИБКА СЕТИ ИЛИ ДОСТУПА - ОНА ВЫСВЕТИТСЯ ЗДЕСЬ!
-                    alert("КРИТИЧЕСКАЯ ОШИБКА ЗАПИСИ: " + error.message);
+                })
+                .catch((error) => {
+                    alert("Ошибка сети: " + error.message);
                 });
             }
         }
 
         function startVoting() {
-            database.ref('options').once('value').then((snapshot) => {
-                if (snapshot.exists()) {
-                    const options = snapshot.val();
+            fetch(`${dbUrl}/options.json`)
+            .then(res => res.json())
+            .then(options => {
+                if (options) {
                     for (let key in options) {
                         if (options[key].active) {
-                            database.ref(`options/${key}`).update({ votes: 0 });
+                            sendToFirebase(`options/${key}/votes`, 0);
                         }
                     }
                 }
-                database.ref('show').update({ status: "active", timer: 15, winner: "" });
+                sendToFirebase('show', { status: "active", timer: 15, winner: "" });
+                
                 let timeLeft = 15;
                 const interval = setInterval(() => {
                     timeLeft--;
-                    database.ref('show').update({ timer: timeLeft });
+                    sendToFirebase('show/timer', timeLeft);
+                    document.getElementById('timerText').innerText = timeLeft;
+                    
                     if (timeLeft <= 0) {
                         clearInterval(interval);
                         endVoting();
                     }
                 }, 1000);
-            }).catch(e => alert("Ошибка старта: " + e.message));
+            });
         }
 
         function endVoting() {
-            database.ref('options').once('value').then((snapshot) => {
-                if (snapshot.exists()) {
-                    const options = snapshot.val();
+            fetch(`${dbUrl}/options.json`)
+            .then(res => res.json())
+            .then(options => {
+                if (options) {
                     let maxVotes = -1;
                     let winnerId = "";
                     let winnerName = "Никто не проголосовал";
+
                     for (let key in options) {
                         if (options[key].active && options[key].votes > maxVotes) {
                             maxVotes = options[key].votes;
@@ -120,38 +115,29 @@
                             winnerName = options[key].name;
                         }
                     }
-                    database.ref('show').update({ status: "finished", winner: winnerName, winnerId: winnerId });
+                    sendToFirebase('show', { status: "finished", winner: winnerName, winnerId: winnerId });
+                    alert(`Голосование окончено! Победил: ${winnerName}`);
                 }
             });
         }
 
         function nextRound() {
-            database.ref('show').once('value').then((snapshot) => {
-                const showData = snapshot.val();
+            fetch(`${dbUrl}/show.json`)
+            .then(res => res.json())
+            .then(showData => {
                 if (showData && showData.winnerId) {
-                    database.ref(`options/${showData.winnerId}`).update({ active: false }).then(() => {
-                        database.ref('show').update({ status: "waiting", winner: "", winnerId: "", timer: 15 });
-                        alert(`Вариант "${showData.winner}" удален!`);
+                    sendToFirebase(`options/${showData.winnerId}/active`, false)
+                    .then(() => {
+                        return sendToFirebase('show', { status: "waiting", winner: "", winnerId: "", timer: 15 });
+                    })
+                    .then(() => {
+                        alert(`Вариант удален из списка! Можно запускать следующий раунд.`);
                     });
                 } else {
-                    alert("Нет победителя!");
+                    alert("Сначала определите победителя!");
                 }
             });
         }
-
-        database.ref('show').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                document.getElementById('timerText').innerText = data.timer;
-                if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
-                if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
-                if (data.status === "finished") document.getElementById('statusText').innerText = `Раунд завершен! Победил: ${data.winner}`;
-            } else {
-                document.getElementById('statusText').innerText = "База пуста. Нажмите кнопку сброса ниже.";
-            }
-        }, (error) => {
-            alert("Ошибка чтения статуса базы: " + error.message);
-        });
     </script>
 </body>
 </html>
