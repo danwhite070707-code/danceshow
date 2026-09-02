@@ -10,31 +10,23 @@
         h1 { font-size: 22px; color: #ff007f; margin: 0; text-transform: uppercase; text-shadow: 0 0 10px #ff007f; }
         .status-box { font-size: 15px; color: #aaa; margin: 5px 0 10px 0; font-weight: bold; text-transform: uppercase; min-height: 20px; }
         
-        /* Крупный неоновый мобильный таймер */
         .mobile-timer { font-size: 55px; font-weight: bold; color: #00ffff; text-shadow: 0 0 15px #00ffff; font-family: monospace; margin: 10px 0 20px 0; display: none; }
         
         .buttons-container { display: flex; flex-direction: column; gap: 12px; max-width: 500px; margin: 0 auto; }
         
-        /* Кнопки стилей танцев */
         .vote-btn { 
             background: #222; color: white; border: 2px solid #333; padding: 18px; 
             font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; 
             transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
         }
-        /* Эффект нажатия */
         .vote-btn:active { transform: scale(0.97); }
         
-        /* Кнопка за которую проголосовал ТЕКУЩИЙ пользователь */
         .vote-btn.my-choice { background: #ff007f !important; border-color: #ff007f !important; color: #fff !important; box-shadow: 0 0 15px #ff007f; }
-        
-        /* Стиль для ПОБЕДИТЕЛЯ раунда на всех телефонах */
         .vote-btn.winner-highlight { background: #1a3333 !important; border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 20px #00ffff; animation: mobilePulse 0.4s infinite alternate; }
         @keyframes mobilePulse { from { transform: scale(1); } to { transform: scale(1.02); } }
         
-        /* Состояние блокировки */
         .vote-btn:disabled { background: #151515; color: #444; border-color: #222; cursor: not-allowed; }
         
-        /* Проценты внутри кнопки */
         .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; font-weight: bold; }
         .vote-btn:disabled .btn-percent { color: #444; }
         .vote-btn.my-choice .btn-percent { color: #fff; }
@@ -47,12 +39,12 @@
 
     <div class="header">
         <h1>Танцевальный Конструктор</h1>
-        <div id="statusText" class="status-box">Синхронизация...</div>
+        <div id="statusText" class="status-box">Ожидание подключения...</div>
         <div id="mobileCountdown" class="mobile-timer">15</div>
     </div>
 
     <div class="buttons-container" id="buttonsList">
-        <!-- Кнопки генерируются из базы -->
+        <!-- Кнопки создадутся в любом случае -->
     </div>
 
     <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
@@ -63,9 +55,22 @@
         let hasVotedInThisRound = false;
         let myChoiceId = "";
 
+        // Резервный список названий (отобразится сразу, если сеть тормозит)
+        const backupOptions = {
+            "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
+            "opt2": { id: "opt2", name: "Хип-хоп баттл", votes: 0, active: true },
+            "opt3": { id: "opt3", name: "Современный контемп", votes: 0, active: true },
+            "opt4": { id: "opt4", name: "Дерзкий вог (Vogue)", votes: 0, active: true },
+            "opt5": { id: "opt5", name: "Зажигательная латина", votes: 0, active: true },
+            "opt6": { id: "opt6", name: "Уличный брейк-данс", votes: 0, active: true },
+            "opt7": { id: "opt7", name: "Классический вальс", votes: 0, active: true },
+            "opt8": { id: "opt8", name: "Джаз-фанк взрыв", votes: 0, active: true },
+            "opt9": { id: "opt9", name: "Ретро Диско", votes: 0, active: true },
+            "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
+        };
+
         function castVote(id) {
             if (!isVotingActive || hasVotedInThisRound) return;
-
             hasVotedInThisRound = true;
             myChoiceId = id;
 
@@ -81,18 +86,23 @@
             .then(() => {
                 let clickedBtn = document.getElementById(`btn-${id}`);
                 if (clickedBtn) clickedBtn.classList.add('my-choice');
-                document.getElementById('statusText').innerText = "Голос принят! Следите за результатами:";
+                document.getElementById('statusText').innerText = "Голос принят! Ожидайте финала:";
             })
             .catch(e => console.log(e));
         }
 
         function syncViewer() {
+            // Читаем глобальный статус шоу
             fetch(`${dbUrl}/show.json`)
             .then(res => res.json())
             .then(showData => {
-                if (!showData) return;
                 const statusEl = document.getElementById('statusText');
                 const timerEl = document.getElementById('mobileCountdown');
+
+                if (!showData) {
+                    statusEl.innerText = "Подключено. Ожидание старта...";
+                    return { status: "waiting" };
+                }
 
                 if (showData.status === "waiting") {
                     isVotingActive = false;
@@ -112,30 +122,26 @@
                 } else if (showData.status === "finished") {
                     isVotingActive = false;
                     timerEl.style.display = "none";
-                    statusEl.innerText = `Победил номер: ${showData.winner.toUpperCase()}`;
+                    statusEl.innerText = `Победил номер: ${showData.winner ? showData.winner.toUpperCase() : '---'}`;
                     statusEl.style.color = "#00ffff";
                 }
-                
                 return showData;
             })
             .then(showData => {
+                // Читаем варианты и проценты
                 fetch(`${dbUrl}/options.json`)
                 .then(res => res.json())
                 .then(options => {
-                    if (!options) return;
-
+                    // Если база пуста — берем резервный список
+                    const currentOptions = options || backupOptions;
+                    
                     let totalVotes = 0;
-                    for (let key in options) {
-                        if (options[key].active) totalVotes += (options[key].votes || 0);
+                    for (let key in currentOptions) {
+                        if (currentOptions[key].active) totalVotes += (currentOptions[key].votes || 0);
                     }
 
-                    const container = document.getElementById('buttonsList');
-                    if (container.children.length === 0) {
-                        renderButtons(options);
-                    }
-
-                    for (let key in options) {
-                        const opt = options[key];
+                    for (let key in currentOptions) {
+                        const opt = currentOptions[key];
                         const btn = document.getElementById(`btn-${key}`);
                         const percentEl = document.getElementById(`per-${key}`);
                         
@@ -147,7 +153,7 @@
 
                             if (!opt.active) {
                                 btn.remove();
-                            } else if (showData.status === "finished") {
+                            } else if (showData && showData.status === "finished") {
                                 btn.disabled = true;
                                 btn.classList.remove('my-choice');
                                 if (showData.winnerId === key) {
@@ -155,33 +161,3 @@
                                 }
                             } else if (!isVotingActive || hasVotedInThisRound) {
                                 btn.disabled = true;
-                                if (myChoiceId === key) btn.classList.add('my-choice');
-                            } else {
-                                btn.disabled = false;
-                                btn.classList.remove('my-choice');
-                            }
-                        }
-                    }
-                });
-            })
-            .catch(e => console.log(e));
-        }
-
-        function renderButtons(options) {
-            const container = document.getElementById('buttonsList');
-            container.innerHTML = "";
-            for (let key in options) {
-                const opt = options[key];
-                if (opt.active) {
-                    let btn = document.createElement('button');
-                    btn.id = `btn-${key}`;
-                    btn.className = 'vote-btn';
-                    btn.innerHTML = `
-                        <span>${opt.name}</span>
-                        <span class="btn-percent" id="per-${key}">0%</span>
-                    `;
-                    btn.onclick = () => castVote(key);
-                    container.appendChild(btn);
-                }
-            }
-        }
