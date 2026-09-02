@@ -47,7 +47,7 @@
 
     <div class="header">
         <h1>Танцевальный Конструктор</h1>
-        <div id="statusText" class="status-box">Загрузка системы...</div>
+        <div id="statusText" class="status-box">Синхронизация...</div>
         <div id="mobileCountdown" class="mobile-timer">15</div>
     </div>
 
@@ -143,15 +143,13 @@
                             let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
                             percentEl.innerText = percent + "%";
 
-                            // Сброс старых классов
                             btn.classList.remove('winner-highlight');
 
                             if (!opt.active) {
-                                btn.remove(); // Удаляем выбывший
+                                btn.remove();
                             } else if (showData.status === "finished") {
                                 btn.disabled = true;
                                 btn.classList.remove('my-choice');
-                                // Подсвечиваем победителя на ВСЕХ смартфонах
                                 if (showData.winnerId === key) {
                                     btn.classList.add('winner-highlight');
                                 }
@@ -187,9 +185,3 @@
                 }
             }
         }
-
-        setInterval(syncViewer, 1000);
-        syncViewer();
-    </script>
-</body>
-</html>
