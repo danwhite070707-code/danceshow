@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Главный Экран Шоу</title>
+    <style>
+        body { font-family: 'Arial Black', sans-serif; background: #111; color: #fff; margin: 0; padding: 40px; text-align: center; }
+        h1 { font-size: 45px; color: #ff007f; text-shadow: 0 0 20px #ff007f; text-transform: uppercase; margin-bottom: 5px; }
+        .timer-box { font-size: 75px; font-weight: bold; color: #00ffff; text-shadow: 0 0 25px #00ffff; margin: 15px 0; font-family: monospace; }
+        .status-text { font-size: 26px; color: #aaa; margin-bottom: 35px; }
+        .options-container { display: flex; flex-direction: column; gap: 15px; max-width: 800px; margin: 0 auto; text-align: left; }
+        
+        .option-row { 
+            background: #222; border: 2px solid #333; padding: 18px; border-radius: 12px; 
+            position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.6s ease-in-out; opacity: 1; transform: scale(1); max-height: 100px;
+        }
+        .option-row.fade-out { opacity: 0; transform: scale(0.5) translateY(-30px); max-height: 0; padding: 0; margin: 0; border: none; pointer-events: none; }
+        
+        .progress-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #ff007f, #7f00ff); width: 0%; transition: width 0.4s ease; z-index: 1; opacity: 0.5; }
+        .option-name { font-size: 26px; font-weight: bold; z-index: 2; position: relative; padding-left: 10px; }
+        .option-votes { font-size: 26px; font-weight: bold; z-index: 2; position: relative; color: #00ffff; }
+        
+        .option-row.winner-highlight { border-color: #00ffff; box-shadow: 0 0 30px #00ffff; background: #1a3333; animation: pulse 0.4s infinite alternate; }
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.02); } }
+    </style>
+</head>
+<body>
+
+    <h1 id="mainTitle">ТАНЦЕВАЛЬНЫЙ КОНСТРУКТОР</h1>
+    <div id="statusLabel" class="status-text">СИНХРОНИЗАЦИЯ С БАЗОЙ...</div>
+    <div id="countdown" class="timer-box" style="display: none;">15</div>
+
+    <div class="options-container" id="optionsList">
+        <!-- Варианты добавятся сами -->
+    </div>
+
+    <script>
+        const dbUrl = "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app";
+
+        // Поминутно опрашиваем базу (Fast HTTP Long-Polling)
+        function updateScreen() {
+            // 1. Получаем статус шоу
+            fetch(`${dbUrl}/show.json`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data) return;
+                const timerEl = document.getElementById('countdown');
+                const statusEl = document.getElementById('statusLabel');
+                const titleEl = document.getElementById('mainTitle');
+
+                if (data.status === "waiting") {
+                    titleEl.innerText = "ТАНЦЕВАЛЬНЫЙ КОНСТРУКТОР";
+                    statusEl.innerText = "ПРИГОТОВЬТЕ СВОИ СМАРТФОНЫ...";
+                    statusEl.style.color = "#aaa";
+                    timerEl.style.display = "none";
+                } else if (data.status === "active") {
+                    titleEl.innerText = "ГОЛОСОВАНИЕ ИДЕТ!";
+                    statusEl.innerText = "ВЫБИРАЙТЕ СЛЕДУЮЩИЙ ТАНЕЦ:";
+                    statusEl.style.color = "#ff007f";
+                    timerEl.style.display = "block";
+                    timerEl.innerText = data.timer;
+                } else if (data.status === "finished") {
+                    titleEl.innerText = "РАУНД ЗАВЕРШЕН!";
+                    statusEl.innerText = `ПОБЕДИЛ НОМЕР: ${data.winner.toUpperCase()}`;
+                    statusEl.style.color = "#00ffff";
+                    timerEl.style.display = "none";
+                }
+                
+                // Передаем статус дальше для подсветки победителя
+                return data;
+            })
+            .then(showData => {
+                // 2. Получаем варианты танцев
+                return fetch(`${dbUrl}/options.json`).then(res => res.json()).then(options => {
+                    if (!options) return;
+                    const container = document.getElementById('optionsList');
+                    
+                    let totalVotes = 0;
+                    for (let key in options) {
+                        if (options[key].active) totalVotes += (options[key].votes || 0);
+                    }
+
+                    for (let key in options) {
+                        const opt = options[key];
+                        let row = document.getElementById(`row-${key}`);
+
+                        if (!row && opt.active) {
+                            row = document.createElement('div');
+                            row.id = `row-${key}`;
+                            row.className = 'option-row';
+                            row.innerHTML = `
+                                <div class="progress-bar" id="bar-${key}"></div>
+                                <div class="option-name">${opt.name}</div>
+                                <div class="option-votes" id="votes-${key}">0%</div>
+                            `;
+                            container.appendChild(row);
+                        }
+
+                        let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
+                        
+                        if (opt.active) {
+                            if (row) {
+                                document.getElementById(`bar-${key}`).style.width = percent + '%';
+                                document.getElementById(`votes-${key}`).innerText = percent + '%';
+                                if (showData && showData.status === "finished" && showData.winnerId === key) {
+                                    row.classList.add('winner-highlight');
+                                } else {
+                                    row.classList.remove('winner-highlight');
+                                }
+                            }
+                        } else {
+                            if (row) {
+                                row.classList.add('fade-out');
+                                setTimeout(() => { if(row) row.remove(); }, 600);
+                            }
+                        }
+                    }
+                });
+            }).catch(e => console.log(e));
+        }
+
+        // Запускаем постоянное обновление экрана каждые полсекунды (чтобы полоски двигались плавно)
+        setInterval(updateScreen, 500);
+        updateScreen();
+    </script>
+</body>
+</html>
