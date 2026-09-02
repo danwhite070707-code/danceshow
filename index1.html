@@ -5,56 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Голосование за танец</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1a1a1a; color: #fff; margin: 0; padding: 15px; text-align: center; }
-        .header { margin: 15px 0; }
-        h1 { font-size: 24px; color: #ff007f; margin: 0; text-transform: uppercase; }
-        .status-box { font-size: 16px; color: #00ffff; margin: 5px 0 20px 0; font-weight: bold; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; text-align: center; }
+        .header { margin: 10px 0 15px 0; }
+        h1 { font-size: 22px; color: #ff007f; margin: 0; text-transform: uppercase; text-shadow: 0 0 10px #ff007f; }
+        .status-box { font-size: 15px; color: #aaa; margin: 5px 0 10px 0; font-weight: bold; text-transform: uppercase; min-height: 20px; }
+        
+        /* Крупный неоновый мобильный таймер */
+        .mobile-timer { font-size: 55px; font-weight: bold; color: #00ffff; text-shadow: 0 0 15px #00ffff; font-family: monospace; margin: 10px 0 20px 0; display: none; }
         
         .buttons-container { display: flex; flex-direction: column; gap: 12px; max-width: 500px; margin: 0 auto; }
         
         /* Кнопки стилей танцев */
         .vote-btn { 
-            background: #2a2a2a; color: white; border: 2px solid #3a3a3a; padding: 18px; 
+            background: #222; color: white; border: 2px solid #333; padding: 18px; 
             font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; 
-            transition: all 0.2s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
+            transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
         }
-        /* Эффект успешного клика */
-        .vote-btn:active { background: #ff007f; border-color: #ff007f; transform: scale(0.97); }
+        /* Эффект нажатия */
+        .vote-btn:active { transform: scale(0.97); }
         
-        /* Состояние блокировки, когда голосования нет */
-        .vote-btn:disabled { background: #151515; color: #555; border-color: #222; cursor: not-allowed; }
+        /* Кнопка за которую проголосовал ТЕКУЩИЙ пользователь */
+        .vote-btn.my-choice { background: #ff007f !important; border-color: #ff007f !important; color: #fff !important; box-shadow: 0 0 15px #ff007f; }
         
-        /* Цвет для отображения процентов внутри кнопки */
-        .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; }
+        /* Стиль для ПОБЕДИТЕЛЯ раунда на всех телефонах */
+        .vote-btn.winner-highlight { background: #1a3333 !important; border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 20px #00ffff; animation: mobilePulse 0.4s infinite alternate; }
+        @keyframes mobilePulse { from { transform: scale(1); } to { transform: scale(1.02); } }
+        
+        /* Состояние блокировки */
+        .vote-btn:disabled { background: #151515; color: #444; border-color: #222; cursor: not-allowed; }
+        
+        /* Проценты внутри кнопки */
+        .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; font-weight: bold; }
         .vote-btn:disabled .btn-percent { color: #444; }
+        .vote-btn.my-choice .btn-percent { color: #fff; }
+        .vote-btn.winner-highlight .btn-percent { color: #00ffff; }
         
-        /* Информационная плашка внизу */
-        .footer { font-size: 12px; color: #555; margin-top: 30px; }
+        .footer { font-size: 11px; color: #444; margin-top: 35px; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h1>Танцевальный Конструктор</h1>
-        <div id="statusText" class="status-box">Загрузка голосования...</div>
+        <div id="statusText" class="status-box">Загрузка системы...</div>
+        <div id="mobileCountdown" class="mobile-timer">15</div>
     </div>
 
     <div class="buttons-container" id="buttonsList">
-        <!-- Кнопки для зрителей генерируются здесь автоматически -->
+        <!-- Кнопки генерируются из базы -->
     </div>
 
     <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
 
     <script>
-        const dbUrl = "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app";
+        const dbUrl = "https://firebasedatabase.app";
         let isVotingActive = false;
         let hasVotedInThisRound = false;
+        let myChoiceId = "";
 
-        // Функция отправки клика зрителя
         function castVote(id) {
             if (!isVotingActive || hasVotedInThisRound) return;
 
             hasVotedInThisRound = true;
+            myChoiceId = id;
 
             fetch(`${dbUrl}/options/${id}/votes.json`)
             .then(res => res.json())
@@ -67,91 +80,87 @@
             })
             .then(() => {
                 let clickedBtn = document.getElementById(`btn-${id}`);
-                if (clickedBtn) {
-                    clickedBtn.style.background = "#ff007f";
-                    clickedBtn.style.borderColor = "#ff007f";
-                    clickedBtn.style.color = "#fff";
-                }
-                document.getElementById('statusText').innerText = "Ваш голос учтен! Следите за процентами:";
+                if (clickedBtn) clickedBtn.classList.add('my-choice');
+                document.getElementById('statusText').innerText = "Голос принят! Следите за результатами:";
             })
-            .catch(e => console.log("Ошибка отправки голоса: ", e));
+            .catch(e => console.log(e));
         }
 
-        // Постоянная синхронизация смартфона зрителя с базой шоу
         function syncViewer() {
-            // 1. Получаем глобальный статус шоу
             fetch(`${dbUrl}/show.json`)
             .then(res => res.json())
             .then(showData => {
                 if (!showData) return;
                 const statusEl = document.getElementById('statusText');
+                const timerEl = document.getElementById('mobileCountdown');
 
                 if (showData.status === "waiting") {
                     isVotingActive = false;
-                    hasVotedInThisRound = false; // Сбрасываем флаг голоса для нового раунда
-                    statusEl.innerText = "ВНИМАНИЕ НА СЦЕНУ! ОЖИДАНИЕ СТАРТА...";
+                    hasVotedInThisRound = false;
+                    myChoiceId = "";
+                    statusEl.innerText = "Внимание на сцену! Ожидайте старта...";
                     statusEl.style.color = "#aaa";
+                    timerEl.style.display = "none";
                 } else if (showData.status === "active") {
                     isVotingActive = true;
+                    timerEl.style.display = "block";
+                    timerEl.innerText = showData.timer;
                     if (!hasVotedInThisRound) {
-                        statusEl.innerText = `УСПЕЙ ПРОГОЛОСОВАТЬ! ОСТАЛОСЬ: ${showData.timer} СЕК`;
+                        statusEl.innerText = "Успей проголосовать!";
                         statusEl.style.color = "#ff007f";
                     }
                 } else if (showData.status === "finished") {
                     isVotingActive = false;
-                    statusEl.innerText = `РАУНД ОКОНЧЕН! ВЫБРАН: ${showData.winner.toUpperCase()}`;
+                    timerEl.style.display = "none";
+                    statusEl.innerText = `Победил номер: ${showData.winner.toUpperCase()}`;
                     statusEl.style.color = "#00ffff";
                 }
                 
-                // Передаем статус дальше для обновления процентов на кнопках
                 return showData;
             })
             .then(showData => {
-                // 2. Получаем варианты и динамически обновляем проценты прямо на кнопках
                 fetch(`${dbUrl}/options.json`)
                 .then(res => res.json())
                 .then(options => {
                     if (!options) return;
 
-                    // Считаем общую сумму голосов
                     let totalVotes = 0;
                     for (let key in options) {
                         if (options[key].active) totalVotes += (options[key].votes || 0);
                     }
 
-                    // Перерисовываем список кнопок только если изменился состав (активен/неактивен)
                     const container = document.getElementById('buttonsList');
-                    
-                    // Если кнопок на экране нет (первый запуск) — создаем их
                     if (container.children.length === 0) {
                         renderButtons(options);
                     }
 
-                    // Обновляем проценты и состояние блокировок на существующих кнопках
                     for (let key in options) {
                         const opt = options[key];
                         const btn = document.getElementById(`btn-${key}`);
                         const percentEl = document.getElementById(`per-${key}`);
                         
                         if (btn && percentEl) {
-                            // Считаем процент
                             let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
                             percentEl.innerText = percent + "%";
 
-                            // Логика блокировки кнопок
+                            // Сброс старых классов
+                            btn.classList.remove('winner-highlight');
+
                             if (!opt.active) {
-                                // Если вариант выбыл — удаляем кнопку
-                                btn.remove();
-                            } else if (!isVotingActive || hasVotedInThisRound || showData.status === "finished") {
-                                // Блокируем клики, но оставляем видимыми проценты
+                                btn.remove(); // Удаляем выбывший
+                            } else if (showData.status === "finished") {
                                 btn.disabled = true;
-                            } else {
-                                // Возвращаем кнопку в активное состояние для нового раунда
-                                btn.disabled = false;
-                                if (btn.style.background === "rgb(255, 0, 127)") {
-                                    btn.style.background = "#2a2a2a";
-                                    btn.style.borderColor = "#3a3a3a";
+                                btn.classList.remove('my-choice');
+                                // Подсвечиваем победителя на ВСЕХ смартфонах
+                                if (showData.winnerId === key) {
+                                    btn.classList.add('winner-highlight');
                                 }
+                            } else if (!isVotingActive || hasVotedInThisRound) {
+                                btn.disabled = true;
+                                if (myChoiceId === key) btn.classList.add('my-choice');
+                            } else {
+                                btn.disabled = false;
+                                btn.classList.remove('my-choice');
                             }
                         }
                     }
@@ -160,7 +169,6 @@
             .catch(e => console.log(e));
         }
 
-        // Функция первичного создания структуры кнопок
         function renderButtons(options) {
             const container = document.getElementById('buttonsList');
             container.innerHTML = "";
@@ -180,7 +188,6 @@
             }
         }
 
-        // Запуск системы опроса раз в секунду
         setInterval(syncViewer, 1000);
         syncViewer();
     </script>
