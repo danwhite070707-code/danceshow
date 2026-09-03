@@ -43,16 +43,13 @@
     <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
 
     <script>
-        // ПОЛНЫЙ И ЖЕСТКИЙ АДРЕС ВАШЕЙ БАЗЫ ДАННЫХ
-        const dbUrl = "https://firebasedatabase.app";
-        
         let isVotingActive = false;
         let hasVotedInThisRound = false;
         let myChoiceId = "";
 
         function syncViewer() {
-            // 1. Получаем глобальный статус шоу
-            fetch(dbUrl + "/show.json")
+            // 1. Получаем статус шоу по абсолютно ПРЯМОЙ и цельной ссылке
+            fetch("https://firebasedatabase.app")
             .then(res => res.json())
             .then(showData => {
                 if (!showData) return;
@@ -82,8 +79,8 @@
                 return showData;
             })
             .then(showData => {
-                // 2. Получаем варианты и динамически обновляем проценты прямо на кнопках
-                fetch(dbUrl + "/options.json")
+                // 2. Получаем варианты по абсолютно ПРЯМОЙ и цельной ссылке
+                fetch("https://firebasedatabase.app")
                 .then(res => res.json())
                 .then(options => {
                     if (!options) return;
@@ -95,7 +92,6 @@
 
                     const container = document.getElementById('buttonsList');
                     
-                    // Если кнопок ещё нет — создаем один раз
                     if (container.children.length === 0) {
                         for (let key in options) {
                             if (options[key].active) {
@@ -109,7 +105,6 @@
                         }
                     }
 
-                    // Обновляем проценты и состояние блокировок
                     for (let key in options) {
                         const opt = options[key];
                         const btn = document.getElementById("btn-" + key);
@@ -120,7 +115,7 @@
                             percentEl.innerText = percent + "%";
 
                             if (!opt.active) {
-                                btn.remove(); // Убираем сыгравший танец
+                                btn.remove();
                             } else if (!isVotingActive || hasVotedInThisRound || (showData && showData.status === "finished")) {
                                 btn.disabled = true;
                                 if (myChoiceId === key) {
@@ -145,11 +140,12 @@
             hasVotedInThisRound = true;
             myChoiceId = id;
 
-            fetch(dbUrl + "/options/" + id + "/votes.json")
+            // Отправка голоса по абсолютно ПРЯМОЙ и цельной ссылке
+            fetch("https://firebasedatabase.app" + id + "/votes.json")
             .then(res => res.json())
             .then(currentVotes => {
                 let newVotes = (currentVotes || 0) + 1;
-                return fetch(dbUrl + "/options/" + id + "/votes.json", {
+                return fetch("https://firebasedatabase.app" + id + "/votes.json", {
                     method: 'PUT',
                     body: JSON.stringify(newVotes)
                 });
