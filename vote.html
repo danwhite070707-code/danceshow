@@ -12,7 +12,6 @@
         
         .buttons-container { display: flex; flex-direction: column; gap: 12px; max-width: 500px; margin: 0 auto; }
         
-        /* Кнопки стилей танцев */
         .vote-btn { 
             background: #2a2a2a; color: white; border: 2px solid #333; padding: 18px; 
             font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; 
@@ -20,13 +19,9 @@
         }
         .vote-btn:active { transform: scale(0.97); }
         
-        /* Кнопка за которую проголосовал текущий зритель */
         .vote-btn.my-choice { background: #ff007f !important; border-color: #ff007f !important; color: #fff !important; }
-        
-        /* Состояние блокировки кнопок */
         .vote-btn:disabled { background: #151515; color: #444; border-color: #222; cursor: not-allowed; }
         
-        /* Проценты внутри кнопки */
         .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; }
         .vote-btn:disabled .btn-percent { color: #444; }
         .vote-btn.my-choice .btn-percent { color: #fff; }
@@ -48,15 +43,16 @@
     <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
 
     <script>
+        // ПОЛНЫЙ И ЖЕСТКИЙ АДРЕС ВАШЕЙ БАЗЫ ДАННЫХ
         const dbUrl = "https://firebasedatabase.app";
+        
         let isVotingActive = false;
         let hasVotedInThisRound = false;
         let myChoiceId = "";
 
-        // Постоянная синхронизация смартфона зрителя с базой шоу
         function syncViewer() {
             // 1. Получаем глобальный статус шоу
-            fetch(`${dbUrl}/show.json`)
+            fetch(dbUrl + "/show.json")
             .then(res => res.json())
             .then(showData => {
                 if (!showData) return;
@@ -71,7 +67,7 @@
                 } else if (showData.status === "active") {
                     isVotingActive = true;
                     if (!hasVotedInThisRound) {
-                        statusEl.innerText = `УСПЕЙ ПРОГОЛОСОВАТЬ! ОСТАЛОСЬ: ${showData.timer} СЕК`;
+                        statusEl.innerText = "УСПЕЙ ПРОГОЛОСОВАТЬ! ОСТАЛОСЬ: " + showData.timer + " СЕК";
                         statusEl.style.color = "#ff007f";
                     } else {
                         statusEl.innerText = "ВАШ ГОЛОС УЧТЕН! СЛЕДИТЕ ЗА ПРОЦЕНТАМИ:";
@@ -79,7 +75,7 @@
                     }
                 } else if (showData.status === "finished") {
                     isVotingActive = false;
-                    statusEl.innerText = `РАУНД ОКОНЧЕН! ВЫБРАН: ${showData.winner.toUpperCase()}`;
+                    statusEl.innerText = "РАУНД ОКОНЧЕН! ВЫБРАН: " + showData.winner.toUpperCase();
                     statusEl.style.color = "#00ffff";
                 }
                 
@@ -87,12 +83,11 @@
             })
             .then(showData => {
                 // 2. Получаем варианты и динамически обновляем проценты прямо на кнопках
-                fetch(`${dbUrl}/options.json`)
+                fetch(dbUrl + "/options.json")
                 .then(res => res.json())
                 .then(options => {
                     if (!options) return;
 
-                    // Считаем общую сумму голосов для вычисления процентов
                     let totalVotes = 0;
                     for (let key in options) {
                         if (options[key].active) totalVotes += (options[key].votes || 0);
@@ -100,38 +95,33 @@
 
                     const container = document.getElementById('buttonsList');
                     
-                    // Если кнопок на экране ещё нет — создаем их структуру один раз
+                    // Если кнопок ещё нет — создаем один раз
                     if (container.children.length === 0) {
                         for (let key in options) {
                             if (options[key].active) {
                                 let btn = document.createElement('button');
-                                btn.id = `btn-${key}`;
+                                btn.id = "btn-" + key;
                                 btn.className = 'vote-btn';
-                                btn.innerHTML = `
-                                    <span>${options[key].name}</span>
-                                    <span class="btn-percent" id="per-${key}">0%</span>
-                                `;
+                                btn.innerHTML = '<span>' + options[key].name + '</span><span class="btn-percent" id="per-' + key + '">0%</span>';
                                 btn.onclick = () => castVote(key);
                                 container.appendChild(btn);
                             }
                         }
                     }
 
-                    // Обновляем проценты и состояние блокировок на существующих кнопках
+                    // Обновляем проценты и состояние блокировок
                     for (let key in options) {
                         const opt = options[key];
-                        const btn = document.getElementById(`btn-${key}`);
-                        const percentEl = document.getElementById(`per-${key}`);
+                        const btn = document.getElementById("btn-" + key);
+                        const percentEl = document.getElementById("per-" + key);
                         
                         if (btn && percentEl) {
                             let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
                             percentEl.innerText = percent + "%";
 
                             if (!opt.active) {
-                                // Если вариант выбыл — плавно удаляем его из списка на телефоне
-                                btn.remove();
+                                btn.remove(); // Убираем сыгравший танец
                             } else if (!isVotingActive || hasVotedInThisRound || (showData && showData.status === "finished")) {
-                                // Блокируем клики во время паузы или после того, как человек проголосовал
                                 btn.disabled = true;
                                 if (myChoiceId === key) {
                                     btn.classList.add('my-choice');
@@ -139,7 +129,6 @@
                                     btn.classList.remove('my-choice');
                                 }
                             } else {
-                                // Возвращаем кнопку в активное состояние для нового раунда
                                 btn.disabled = false;
                                 btn.classList.remove('my-choice');
                             }
@@ -150,18 +139,17 @@
             .catch(e => console.log(e));
         }
 
-        // Функция отправки клика зрителя
         function castVote(id) {
             if (!isVotingActive || hasVotedInThisRound) return;
 
             hasVotedInThisRound = true;
             myChoiceId = id;
 
-            fetch(`${dbUrl}/options/${id}/votes.json`)
+            fetch(dbUrl + "/options/" + id + "/votes.json")
             .then(res => res.json())
             .then(currentVotes => {
                 let newVotes = (currentVotes || 0) + 1;
-                return fetch(`${dbUrl}/options/${id}/votes.json`, {
+                return fetch(dbUrl + "/options/" + id + "/votes.json", {
                     method: 'PUT',
                     body: JSON.stringify(newVotes)
                 });
@@ -169,7 +157,6 @@
             .catch(e => console.log("Ошибка отправки голоса: ", e));
         }
 
-        // Включаем постоянный опрос сети раз в секунду
         setInterval(syncViewer, 1000);
         syncViewer();
     </script>
