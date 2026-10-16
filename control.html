@@ -12,11 +12,16 @@
         button.secondary:hover { background: #555; }
         .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
         
+        /* Стили экрана блокировки */
         #authScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .pass-input { background: #222; border: 2px solid #ff007f; padding: 15px; font-size: 24px; color: #fff; text-align: center; border-radius: 10px; width: 200px; letter-spacing: 5px; margin-bottom: 15px; outline: none; }
         .pass-btn { background: #ff007f; color: white; border: none; padding: 12px 30px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; }
         .pass-error { color: #ff007f; font-weight: bold; margin-top: 15px; display: none; }
     </style>
+
+    <!-- Исходные стабильные библиотеки CDNJ -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
@@ -33,7 +38,7 @@
         <h1>Управление «Танцевальным Конструктором»</h1>
         
         <div class="status-box">
-            <p><strong>Текущий статус:</strong> <span id="statusText">Ожидание...</span></p>
+            <p><strong>Текущий статус:</strong> <span id="statusText">Подключение к шоу...</span></p>
             <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
         </div>
 
@@ -47,10 +52,7 @@
 
     <script>
         const SECRET_PASSWORD = "7777";
-        
-        // Полностью зашифрованная ссылка на вашу базу данных (Антивирус её не прочитает)
-        const secretCode = "aHR0cHM6Ly9kYW5jZS1jb25zdHJ1Y3Rvci1kZWZhdWx0LXJ0ZGIuZXVyb3BlLXdlc3QxLmZpcmViYXNlZGF0YWJhc2UuYXBw";
-        const realUrl = atob(secretCode); // Внутренняя расшифровка в памяти браузера
+        var database;
 
         function checkPassword() {
             const input = document.getElementById('passwordField').value;
@@ -59,7 +61,7 @@
             if (input === SECRET_PASSWORD) {
                 document.getElementById('authScreen').remove();
                 document.getElementById('adminContent').style.display = 'block';
-                setInterval(syncAdminStatus, 1000);
+                initFirebase(); 
             } else {
                 error.style.display = 'block';
                 document.getElementById('passwordField').value = '';
@@ -69,6 +71,33 @@
         document.getElementById('passwordField').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') checkPassword();
         });
+
+        function initFirebase() {
+            const firebaseConfig = {
+              apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
+              authDomain: "://firebaseapp.com",
+              databaseURL: "https://firebasedatabase.app",
+              projectId: "dance-constructor",
+              storageBucket: "dance-constructor.firebasestorage.app",
+              messagingSenderId: "604020322730",
+              appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
+            };
+
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+
+            database.ref('show').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('timerText').innerText = data.timer;
+                    if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
+                    if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
+                    if (data.status === "finished") document.getElementById('statusText').innerText = `Раунд завершен! Победил: ${data.winner}`;
+                } else {
+                    document.getElementById('statusText').innerText = "База пуста. Нажмите кнопку сброса ниже.";
+                }
+            });
+        }
 
         const initialOptions = {
             "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
@@ -83,70 +112,52 @@
             "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
         };
 
-        function sendData(path, payload) {
-            return fetch(realUrl + "/" + path + ".json", {
-                method: 'PUT',
-                body: JSON.stringify(payload)
-            });
-        }
-
-        function syncAdminStatus() {
-            fetch(realUrl + "/show.json")
-            .then(res => res.json())
-            .then(data => {
-                if (!data) return;
-                document.getElementById('timerText').innerText = data.timer;
-                if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
-                if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
-                if (data.status === "finished") document.getElementById('statusText').innerText = "Раунд завершен! Победил: " + data.winner;
-            }).catch(e => console.log(e));
-        }
-
         function resetDatabase() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
-                sendData('show', { status: "waiting", timer: 15, winner: "" })
-                .then(() => {
-                    return sendData('options', initialOptions);
-                })
-                .then(() => {
+                database.ref('show/').set({
+                    status: "waiting", 
+                    timer: 15,
+                    winner: ""
+                }).then(() => {
+                    return database.ref('options/').set(initialOptions);
+                }).then(() => {
                     alert("База данных успешно обновлена! 10 вариантов готовы.");
-                })
-                .catch(err => alert("Ошибка: " + err.message));
+                }).catch((error) => {
+                    alert("Ошибка записи в базу: " + error.message);
+                });
             }
         }
 
         function startVoting() {
-            fetch(realUrl + "/options.json")
-            .then(res => res.json())
-            .then(options => {
-                if (options) {
+            database.ref('options').once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
                     for (let key in options) {
                         if (options[key].active) {
-                            sendData("options/" + key + "/votes", 0);
+                            database.ref(`options/${key}`).update({ votes: 0 });
                         }
                     }
                 }
-                return sendData('show', { status: "active", timer: 15, winner: "" });
-            })
-            .then(() => {
+                
+                database.ref('show').update({ status: "active", timer: 15, winner: "" });
+                
                 let timeLeft = 15;
                 const interval = setInterval(() => {
                     timeLeft--;
-                    sendData('show/timer', timeLeft);
+                    database.ref('show').update({ timer: timeLeft });
                     
                     if (timeLeft <= 0) {
                         clearInterval(interval);
                         endVoting();
                     }
                 }, 1000);
-            }).catch(err => alert("Ошибка: " + err.message));
+            });
         }
 
         function endVoting() {
-            fetch(realUrl + "/options.json")
-            .then(res => res.json())
-            .then(options => {
-                if (options) {
+            database.ref('options').once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
                     let maxVotes = -1;
                     let winnerId = "";
                     let winnerName = "Никто не проголосовал";
@@ -158,22 +169,23 @@
                             winnerName = options[key].name;
                         }
                     }
-                    sendData('show', { status: "finished", winner: winnerName, winnerId: winnerId });
+
+                    database.ref('show').update({ 
+                        status: "finished", 
+                        winner: winnerName,
+                        winnerId: winnerId
+                    });
                 }
             });
         }
 
         function nextRound() {
-            fetch(realUrl + "/show.json")
-            .then(res => res.json())
-            .then(showData => {
+            database.ref('show').once('value').then((snapshot) => {
+                const showData = snapshot.val();
                 if (showData && showData.winnerId) {
-                    sendData("options/" + showData.winnerId + "/active", false)
-                    .then(() => {
-                        return sendData('show', { status: "waiting", winner: "", winnerId: "", timer: 15 });
-                    })
-                    .then(() => {
-                        alert("Вариант успешно удален из списка! Можно запускать следующий раунд.");
+                    database.ref(`options/${showData.winnerId}`).update({ active: false }).then(() => {
+                        database.ref('show').update({ status: "waiting", winner: "", winnerId: "", timer: 15 });
+                        alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
                     });
                 } else {
                     alert("Сначала запустите голосование и дождитесь определения победителя!");
