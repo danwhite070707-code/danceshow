@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель управления Шоу</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #222; color: #fff; padding: 20px; max-width: 600px; margin: 0 auto; }
+        h1, h2 { color: #ff007f; }
+        button { background: #ff007f; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin: 5px 0; width: 100%; font-weight: bold; }
+        button:hover { background: #e0006c; }
+        button.secondary { background: #444; }
+        button.secondary:hover { background: #555; }
+        .status-box { background: #333; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #ff007f; }
+        
+        /* Стили экрана блокировки */
+        #authScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .pass-input { background: #222; border: 2px solid #ff007f; padding: 15px; font-size: 24px; color: #fff; text-align: center; border-radius: 10px; width: 200px; letter-spacing: 5px; margin-bottom: 15px; outline: none; }
+        .pass-btn { background: #ff007f; color: white; border: none; padding: 12px 30px; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+        .pass-error { color: #ff007f; font-weight: bold; margin-top: 15px; display: none; }
+    </style>
+
+    <!-- Официальные неубиваемые библиотеки напрямую от Google Firebase (Compat-версия) -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+</head>
+<body>
+
+    <!-- ЭКРАН ЗАЩИТЫ И ВВОДА ПАРОЛЯ -->
+    <div id="authScreen">
+        <h2 style="margin-bottom: 25px;">ВХОД В СИСТЕМУ ШОУ</h2>
+        <input type="password" id="passwordField" class="pass-input" placeholder="0000" maxlength="6">
+        <button class="pass-btn" onclick="checkPassword()">ВОЙТИ</button>
+        <div id="errorText" class="pass-error">НЕВЕРНЫЙ ПАРОЛЬ! ДОСТУП ОГРАНИЧЕН.</div>
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ АДМИНКИ -->
+    <div id="adminContent" style="display: none;">
+        <h1>Управление «Танцевальным Конструктором»</h1>
+        
+        <div class="status-box">
+            <p><strong>Текущий статус:</strong> <span id="statusText">Подключение к шоу...</span></p>
+            <p><strong>Осталось времени:</strong> <span id="timerText">15</span> сек</p>
+        </div>
+
+        <h2>1. Подготовка шоу (Сделать перед началом)</h2>
+        <button class="secondary" onclick="resetDatabase()">Сбросить базу и загрузить 10 вариантов</button>
+
+        <h2>2. Игровой процесс</h2>
+        <button onclick="startVoting()">🚀 ЗАПУСТИТЬ ГОЛОСОВАНИЕ (15 сек)</button>
+        <button class="secondary" onclick="nextRound()">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
+    </div>
+
+    <script>
+        const SECRET_PASSWORD = "7777";
+        var database;
+
+        function checkPassword() {
+            const input = document.getElementById('passwordField').value;
+            const error = document.getElementById('errorText');
+            
+            if (input === SECRET_PASSWORD) {
+                document.getElementById('authScreen').remove();
+                document.getElementById('adminContent').style.display = 'block';
+                initFirebase(); 
+            } else {
+                error.style.display = 'block';
+                document.getElementById('passwordField').value = '';
+            }
+        }
+
+        document.getElementById('passwordField').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') checkPassword();
+        });
+
+        function initFirebase() {
+            const firebaseConfig = {
+              apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
+              authDomain: "://firebaseapp.com",
+              databaseURL: "https://firebasedatabase.app",
+              projectId: "dance-constructor",
+              storageBucket: "dance-constructor.firebasestorage.app",
+              messagingSenderId: "604020322730",
+              appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
+            };
+
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+
+            database.ref('show').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    document.getElementById('timerText').innerText = data.timer;
+                    if (data.status === "waiting") document.getElementById('statusText').innerText = "Ожидание запуска раунда";
+                    if (data.status === "active") document.getElementById('statusText').innerText = "Идет голосование зрителей!";
+                    if (data.status === "finished") document.getElementById('statusText').innerText = `Раунд завершен! Победил: ${data.winner}`;
+                } else {
+                    document.getElementById('statusText').innerText = "База пуста. Нажмите кнопку сброса ниже.";
+                }
+            });
+        }
+
+        const initialOptions = {
+            "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
+            "opt2": { id: "opt2", name: "Хип-хоп баттл", votes: 0, active: true },
+            "opt3": { id: "opt3", name: "Современный контемп", votes: 0, active: true },
+            "opt4": { id: "opt4", name: "Дерзкий вог (Vogue)", votes: 0, active: true },
+            "opt5": { id: "opt5", name: "Зажигательная латина", votes: 0, active: true },
+            "opt6": { id: "opt6", name: "Уличный брейк-данс", votes: 0, active: true },
+            "opt7": { id: "opt7", name: "Классический вальс", votes: 0, active: true },
+            "opt8": { id: "opt8", name: "Джаз-фанк взрыв", votes: 0, active: true },
+            "opt9": { id: "opt9", name: "Ретро Диско", votes: 0, active: true },
+            "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
+        };
+
+        function resetDatabase() {
+            if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
+                database.ref('show/').set({
+                    status: "waiting", 
+                    timer: 15,
+                    winner: ""
+                }).then(() => {
+                    return database.ref('options/').set(initialOptions);
+                }).then(() => {
+                    alert("База данных успешно обновлена! 10 вариантов готовы.");
+                }).catch((error) => {
+                    alert("Ошибка записи в базу: " + error.message);
+                });
+            }
+        }
+
+        function startVoting() {
+            database.ref('options').once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
+                    for (let key in options) {
+                        if (options[key].active) {
+                            database.ref(`options/${key}`).update({ votes: 0 });
+                        }
+                    }
+                }
+                
+                database.ref('show').update({ status: "active", timer: 15, winner: "" });
+                
+                let timeLeft = 15;
+                const interval = setInterval(() => {
+                    timeLeft--;
+                    database.ref('show').update({ timer: timeLeft });
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(interval);
+                        endVoting();
+                    }
+                }, 1000);
+            });
+        }
+
+        function endVoting() {
+            database.ref('options').once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const options = snapshot.val();
+                    let maxVotes = -1;
+                    let winnerId = "";
+                    let winnerName = "Никто не проголосовал";
+
+                    for (let key in options) {
+                        if (options[key].active && options[key].votes > maxVotes) {
+                            maxVotes = options[key].votes;
+                            winnerId = key;
+                            winnerName = options[key].name;
+                        }
+                    }
+
+                    database.ref('show').update({ 
+                        status: "finished", 
+                        winner: winnerName,
+                        winnerId: winnerId
+                    });
+                }
+            });
+        }
+
+        function nextRound() {
+            database.ref('show').once('value').then((snapshot) => {
+                const showData = snapshot.val();
+                if (showData && showData.winnerId) {
+                    database.ref(`options/${showData.winnerId}`).update({ active: false }).then(() => {
+                        database.ref('show').update({ status: "waiting", winner: "", winnerId: "", timer: 15 });
+                        alert(`Вариант "${showData.winner}" успешно удален из списка! Можно запускать следующий раунд.`);
+                    });
+                } else {
+                    alert("Сначала запустите голосование и дождитесь определения победителя!");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
