@@ -18,7 +18,7 @@
         .pass-error { color: #ff007f; font-weight: bold; margin-top: 15px; display: none; }
     </style>
 
-    <!-- Железобетонное подключение классических библиотек через независимый сервер CDNJ -->
+    <!-- Классические библиотеки через независимый сервер CDNJ -->
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
 </head>
@@ -53,6 +53,20 @@
         const SECRET_PASSWORD = "7777";
         var database;
 
+        // Конфиг теперь инициализируется сразу глобально
+        const firebaseConfig = {
+          apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
+          authDomain: "://firebaseapp.com",
+          databaseURL: "https://firebasedatabase.app",
+          projectId: "dance-constructor",
+          storageBucket: "dance-constructor.firebasestorage.app",
+          messagingSenderId: "604020322730",
+          appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+
         function checkPassword() {
             const input = document.getElementById('passwordField').value;
             const error = document.getElementById('errorText');
@@ -71,16 +85,6 @@
             if (e.key === 'Enter') checkPassword();
         });
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
-          authDomain: "://firebaseapp.com",
-          databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
-          projectId: "dance-constructor",
-          storageBucket: "dance-constructor.firebasestorage.app",
-          messagingSenderId: "604020322730",
-          appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
-        };
-
         const initialOptions = {
             "opt1": { id: "opt1", name: "Танго страсти", votes: 0, active: true },
             "opt2": { id: "opt2", name: "Хип-хоп баттл", votes: 0, active: true },
@@ -95,9 +99,6 @@
         };
 
         function initRealtimeLogic() {
-            firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-
             database.ref('show').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -184,3 +185,4 @@
     </script>
 </body>
 </html>
+
