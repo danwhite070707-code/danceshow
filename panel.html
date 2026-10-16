@@ -18,7 +18,7 @@
         .pass-error { color: #ff007f; font-weight: bold; margin-top: 15px; display: none; }
     </style>
 
-    <!-- Классические библиотеки через независимый сервер CDNJ -->
+    <!-- Используем стабильное классическое подключение -->
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
 </head>
@@ -53,7 +53,7 @@
         const SECRET_PASSWORD = "7777";
         var database;
 
-        // Конфиг теперь инициализируется сразу глобально
+        // В Конфиг добавлен параметр europe-west1 для жесткой привязки к вашему серверу Бельгии
         const firebaseConfig = {
           apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
           authDomain: "://firebaseapp.com",
@@ -64,8 +64,13 @@
           appId: "1:604020322730:web:e3d233af6c935ab9e1fbd3"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        database = firebase.database();
+        // Мгновенная инициализация при загрузке
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+        } catch (e) {
+            console.error("Ошибка Firebase: " + e.message);
+        }
 
         function checkPassword() {
             const input = document.getElementById('passwordField').value;
@@ -114,10 +119,16 @@
 
         function resetDatabase() {
             if (confirm("Вы точно хотите сбросить базу данных? Все голоса обнулятся, вернутся все 10 вариантов.")) {
-                database.ref('show/').set({ status: "waiting", timer: 15, winner: "" }).then(() => {
+                database.ref('show/').set({ status: "waiting", timer: 15, winner: "" })
+                .then(() => {
                     return database.ref('options/').set(initialOptions);
-                }).then(() => {
+                })
+                .then(() => {
+                    // ЭТО ТО САМОЕ ВТОРОЕ ОКНО, КОТОРОЕ СЕЙЧАС НЕ ВЫЛЕЗАЛО!
                     alert("База данных успешно обновлена! 10 вариантов готовы.");
+                })
+                .catch((err) => {
+                    alert("Ошибка отправки данных: " + err.message);
                 });
             }
         }
@@ -133,18 +144,20 @@
                     }
                 }
                 
-                database.ref('show').update({ status: "active", timer: 15, winner: "" });
-                
-                let timeLeft = 15;
-                const interval = setInterval(() => {
-                    timeLeft--;
-                    database.ref('show').update({ timer: timeLeft });
-                    
-                    if (timeLeft <= 0) {
-                        clearInterval(interval);
-                        endVoting();
-                    }
-                }, 1000);
+                database.ref('show').update({ status: "active", timer: 15, winner: "" }).then(() => {
+                    let timeLeft = 15;
+                    const interval = setInterval(() => {
+                        timeLeft--;
+                        database.ref('show').update({ timer: timeLeft });
+                        
+                        if (timeLeft <= 0) {
+                            clearInterval(interval);
+                            endVoting();
+                        }
+                    }, 1000);
+                });
+            }).catch((err) => {
+                alert("Ошибка старта: " + err.message);
             });
         }
 
@@ -185,4 +198,3 @@
     </script>
 </body>
 </html>
-
