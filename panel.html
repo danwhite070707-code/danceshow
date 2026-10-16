@@ -45,17 +45,17 @@
         <button class="secondary" id="btnNext">➡️ ЗАВЕРШИТЬ РАУНД и удалить победителя</button>
     </div>
 
-    <!-- Новое супер-стабильное подключение модулей напрямую через Google -->
+    <!-- Исправленный официальный импорт напрямую от Google -->
     <script type="module">
         import { initializeApp } from "https://gstatic.com";
         import { getDatabase, ref, set, update, onValue, get } from "https://gstatic.com";
 
-        const SECRET_PASSWORD = "7777";
+        const SECRET_PASSWORD = "9057";
         
         const firebaseConfig = {
           apiKey: "AIzaSyDMdL1A2yGzCPGeO-xdMSy0YW-ZKF1K3-w",
           authDomain: "://firebaseapp.com",
-          databaseURL: "https://firebasedatabase.app",
+          databaseURL: "https://dance-constructor-default-rtdb.europe-west1.firebasedatabase.app",
           projectId: "dance-constructor",
           storageBucket: "dance-constructor.firebasestorage.app",
           messagingSenderId: "604020322730",
@@ -65,7 +65,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Функция проверки пароля
         function checkPassword() {
             const input = document.getElementById('passwordField').value;
             const error = document.getElementById('errorText');
@@ -80,7 +79,6 @@
             }
         }
 
-        // Привязываем кнопки к авторизации
         document.getElementById('btnAuth').onclick = checkPassword;
         document.getElementById('passwordField').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') checkPassword();
@@ -99,7 +97,6 @@
             "opt10": { id: "opt10", name: "Рок-н-ролл драйв", votes: 0, active: true }
         };
 
-        // Запуск логики после ввода пароля
         function initRealtimeLogic() {
             onValue(ref(db, 'show'), (snapshot) => {
                 const data = snapshot.val();
