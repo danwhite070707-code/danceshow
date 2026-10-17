@@ -5,17 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Голосование за танец</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; text-align: center; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; text-align: center; }
         .header { margin: 10px 0 15px 0; }
         h1 { font-size: 22px; color: #ff007f; margin: 0; text-transform: uppercase; text-shadow: 0 0 10px #ff007f; }
         .status-box { font-size: 15px; color: #aaa; margin: 5px 0 10px 0; font-weight: bold; text-transform: uppercase; min-height: 20px; }
         .mobile-timer { font-size: 60px; font-weight: bold; color: #00ffff; text-shadow: 0 0 20px #00ffff; font-family: monospace; margin: 10px 0 20px 0; display: none; }
         .buttons-container { display: flex; flex-direction: column; gap: 12px; max-width: 500px; margin: 0 auto; }
-        .vote-btn { 
-            background: #222; color: white; border: 2px solid #333; padding: 18px; 
-            font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; 
-            transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
-        }
+        .vote-btn { background: #222; color: white; border: 2px solid #333; padding: 18px; font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; }
         .vote-btn:active { transform: scale(0.97); }
         .vote-btn.my-choice { background: #ff007f !important; border-color: #ff007f !important; color: #fff !important; box-shadow: 0 0 15px #ff007f; }
         .vote-btn.winner-highlight { background: #1a3333 !important; border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 25px #00ffff; animation: mobilePulse 0.4s infinite alternate; }
@@ -26,9 +22,19 @@
         .vote-btn.my-choice .btn-percent { color: #fff; }
         .vote-btn.winner-highlight .btn-percent { color: #00ffff; }
         .footer { font-size: 11px; color: #444; margin-top: 35px; }
+        #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .connect-btn { background: linear-gradient(135deg, #ff007f, #7f00ff); color: white; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(255, 0, 127, 0.5); text-transform: uppercase; animation: pulseConnect 1.5s infinite alternate; }
+        @keyframes pulseConnect { from { transform: scale(1); } to { transform: scale(1.04); } }
     </style>
 </head>
 <body>
+
+    <!-- СТАРТОВАЯ ПЛАШКА ДЛЯ АКТИВАЦИИ АУДИО НА СМАРТФОНАХ -->
+    <div id="startOverlay">
+        <h2 style="color: #ff007f; text-shadow: 0 0 10px #ff007f; margin-bottom: 30px; text-transform: uppercase; text-align: center; font-size: 24px;">Танцевальный Конструктор</h2>
+        <button class="connect-btn" onclick="activateAudio()">Подключиться к шоу</button>
+        <p style="color: #666; font-size: 14px; margin-top: 20px; text-align: center;">Нажмите для синхронизации графики и звука</p>
+    </div>
 
     <div class="header">
         <h1>Танцевальный Конструктор</h1>
@@ -37,11 +43,10 @@
     </div>
 
     <div class="buttons-container" id="buttonsList">
-        <!-- Кнопки создаются динамически -->
+        <!-- Кнопки создаются здесь -->
     </div>
 
     <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
-
     <script>
         let isVotingActive = false;
         let hasVotedInThisRound = false;
@@ -51,140 +56,99 @@
         let audioCtx = null;
 
         function playMetronomeSound() {
+            if (!audioCtx) return;
             try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 let osc = audioCtx.createOscillator();
                 let gainNode = audioCtx.createGain();
                 osc.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
-                osc.type = 'sine'; 
-                osc.frequency.value = 800; 
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+                osc.type = 'triangle'; // Деревянный тембр стука
+                osc.frequency.value = 220; // Глухой "тук"
+                gainNode.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
                 osc.start();
-                osc.stop(audioCtx.currentTime + 0.08);
-            } catch(e) { console.log("Звук ожидает клика"); }
+                osc.stop(audioCtx.currentTime + 0.05);
+            } catch(e) { console.log(e); }
+        }
+
+        function activateAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('startOverlay').remove();
         }
 
         const secretCode = "aHR0cHM6Ly9kYW5jZS1jb25zdHJ1Y3Rvci1kZWZhdWx0LXJ0ZGIuZXVyb3BlLXdlc3QxLmZpcmViYXNlZGF0YWJhc2UuYXBw";
         const realUrl = atob(secretCode);
 
         function syncViewer() {
-            fetch(realUrl + "/show.json")
-            .then(res => res.json())
-            .then(showData => {
+            fetch(realUrl + "/show.json").then(res => res.json()).then(showData => {
                 if (!showData) return;
                 const statusEl = document.getElementById('statusText');
                 const timerEl = document.getElementById('mobileCountdown');
 
                 if (showData.status === "waiting") {
-                    isVotingActive = false;
-                    hasVotedInThisRound = false; 
-                    hasVibratedInThisRound = false;
-                    myChoiceId = "";
-                    lastTimerValue = -1;
+                    isVotingActive = false; hasVotedInThisRound = false; hasVibratedInThisRound = false; myChoiceId = ""; lastTimerValue = -1;
                     statusEl.innerText = "ВНИМАНИЕ НА СЦЕНУ! ОЖИДАНИЕ СТАРТА...";
-                    statusEl.style.color = "#aaa";
-                    timerEl.style.display = "none";
+                    statusEl.style.color = "#aaa"; timerEl.style.display = "none";
                 } else if (showData.status === "active") {
-                    isVotingActive = true;
-                    timerEl.style.display = "block";
-                    timerEl.innerText = showData.timer;
-                    
+                    isVotingActive = true; timerEl.style.display = "block"; timerEl.innerText = showData.timer;
                     if (showData.timer !== lastTimerValue) {
                         lastTimerValue = showData.timer;
-                        playMetronomeSound();
+                        playMetronomeSound(); // Ритмичные щелчки метронома
                         if (!hasVibratedInThisRound) {
                             hasVibratedInThisRound = true;
                             if (navigator.vibrate) navigator.vibrate(200);
                         }
                     }
-
-                    if (!hasVotedInThisRound) {
-                        statusEl.innerText = "УСПЕЙ ПРОГОЛОСОВАТЬ!";
-                        statusEl.style.color = "#ff007f";
-                    } else {
-                        statusEl.innerText = "ВАШ ГОЛОС УЧТЕН! СЛЕДИТЕ ЗА ПРОЦЕНТАМИ:";
-                        statusEl.style.color = "#00ffff";
-                    }
+                    if (!hasVotedInThisRound) { statusEl.innerText = "УСПЕЙ ПРОГОЛОСОВАТЬ!"; statusEl.style.color = "#ff007f"; }
+                    else { statusEl.innerText = "ВАШ ГОЛОС УЧТЕН! СЛЕДИТЕ ЗА ПРОЦЕНТАМИ:"; statusEl.style.color = "#00ffff"; }
                 } else if (showData.status === "finished") {
-                    isVotingActive = false;
-                    timerEl.style.display = "none"; 
-                    statusEl.innerText = "ПОБЕДИЛ НОМЕР: " + showData.winner.toUpperCase();
-                    statusEl.style.color = "#00ffff";
-                    lastTimerValue = -1;
+                    isVotingActive = false; timerEl.style.display = "none"; lastTimerValue = -1;
+                    statusEl.innerText = "ПОБЕДИЛ НОМЕР: " + showData.winner.toUpperCase(); statusEl.style.color = "#00ffff";
                 }
                 return showData;
-            })
-            .then(showData => {
-                fetch(realUrl + "/options.json")
-                .then(res => res.json())
-                .then(options => {
+            }).then(showData => {
+                fetch(realUrl + "/options.json").then(res => res.json()).then(options => {
                     if (!options) return;
                     let totalVotes = 0;
-                    for (let key in options) {
-                        if (options[key].active) totalVotes += (options[key].votes || 0);
-                    }
-
+                    for (let key in options) { if (options[key].active) totalVotes += (options[key].votes || 0); }
                     const container = document.getElementById('buttonsList');
                     if (container.children.length === 0) {
                         for (let key in options) {
                             if (options[key].active) {
-                                let btn = document.createElement('button');
-                                btn.id = "btn-" + key;
-                                btn.className = 'vote-btn';
+                                let btn = document.createElement('button'); btn.id = "btn-" + key; btn.className = 'vote-btn';
                                 btn.innerHTML = '<span>' + options[key].name + '</span><span class="btn-percent" id="per-' + key + '">0%</span>';
-                                btn.onclick = () => castVote(key);
-                                container.appendChild(btn);
+                                btn.onclick = () => castVote(key); container.appendChild(btn);
                             }
                         }
                     }
-
                     for (let key in options) {
-                        const opt = options[key];
-                        const btn = document.getElementById("btn-" + key);
-                        const percentEl = document.getElementById("per-" + key);
-                        
+                        const opt = options[key]; const btn = document.getElementById("btn-" + key); const percentEl = document.getElementById("per-" + key);
                         if (btn && percentEl) {
                             let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
-                            percentEl.innerText = percent + "%";
-                            btn.classList.remove('winner-highlight');
-
-                            if (!opt.active) {
-                                btn.remove(); 
-                            } else if (showData && showData.status === "finished") {
-                                btn.disabled = true;
-                                btn.classList.remove('my-choice');
+                            percentEl.innerText = percent + "%"; btn.classList.remove('winner-highlight');
+                            if (!opt.active) { btn.remove(); }
+                            else if (showData && showData.status === "finished") {
+                                btn.disabled = true; btn.classList.remove('my-choice');
                                 if (showData.winnerId === key) btn.classList.add('winner-highlight');
                             } else if (!isVotingActive || hasVotedInThisRound) {
                                 btn.disabled = true;
                                 if (myChoiceId === key) btn.classList.add('my-choice');
                                 else btn.classList.remove('my-choice');
-                            } else {
-                                btn.disabled = false;
-                                btn.classList.remove('my-choice');
-                            }
+                            } else { btn.disabled = false; btn.classList.remove('my-choice'); }
                         }
                     }
                 });
-            })
-            .catch(e => console.log(e));
+            }).catch(e => console.log(e));
         }
 
         function castVote(id) {
             if (!isVotingActive || hasVotedInThisRound) return;
-            hasVotedInThisRound = true;
-            myChoiceId = id;
+            hasVotedInThisRound = true; myChoiceId = id;
             if (navigator.vibrate) navigator.vibrate(50);
-
-            fetch(realUrl + "/options/" + id + "/votes.json")
-            .then(res => res.json())
-            .then(currentVotes => {
+            fetch(realUrl + "/options/" + id + "/votes.json").then(res => res.json()).then(currentVotes => {
                 let newVotes = (currentVotes || 0) + 1;
-                return fetch(realUrl + "/options/" + id + "/votes.json", {
-                    method: 'PUT',
-                    body: JSON.stringify(newVotes)
-                });
+                return fetch(realUrl + "/options/" + id + "/votes.json", { method: 'PUT', body: JSON.stringify(newVotes) });
             }).catch(e => console.log(e));
         }
 
