@@ -5,100 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Голосование за танец</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #111; color: #fff; margin: 0; padding: 15px; text-align: center; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0d0d0d url("bg.png") no-repeat center center fixed; background-size: contain; 
+            color: #fff; margin: 0; padding: 15px; text-align: center; 
+        }
         .header { margin: 10px 0 15px 0; }
         h1 { font-size: 22px; color: #ff007f; margin: 0; text-transform: uppercase; text-shadow: 0 0 10px #ff007f; }
-        .status-box { font-size: 15px; color: #aaa; margin: 5px 0 10px 0; font-weight: bold; text-transform: uppercase; min-height: 20px; }
+        .status-box { font-size: 15px; color: #fff; margin: 5px 0 10px 0; font-weight: bold; text-transform: uppercase; min-height: 20px; text-shadow: 0 2px 8px #000; }
         .mobile-timer { font-size: 60px; font-weight: bold; color: #00ffff; text-shadow: 0 0 20px #00ffff; font-family: monospace; margin: 10px 0 20px 0; display: none; }
         .buttons-container { display: flex; flex-direction: column; gap: 12px; max-width: 500px; margin: 0 auto; }
-        .vote-btn { background: #222; color: white; border: 2px solid #333; padding: 18px; font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; }
+        .vote-btn { 
+            background: rgba(30, 30, 30, 0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: white; 
+            border: 2px solid rgba(255, 255, 255, 0.1); padding: 18px; font-size: 18px; font-weight: bold; 
+            border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;
+        }
         .vote-btn:active { transform: scale(0.97); }
         .vote-btn.my-choice { background: #ff007f !important; border-color: #ff007f !important; color: #fff !important; box-shadow: 0 0 15px #ff007f; }
-        .vote-btn.winner-highlight { background: #1a3333 !important; border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 25px #00ffff; animation: mobilePulse 0.4s infinite alternate; }
+        .vote-btn.winner-highlight { background: rgba(26, 51, 51, 0.9) !important; border-color: #00ffff !important; color: #00ffff !important; box-shadow: 0 0 25px #00ffff; animation: mobilePulse 0.4s infinite alternate; }
         @keyframes mobilePulse { from { transform: scale(1); } to { transform: scale(1.03); } }
-        .vote-btn:disabled { background: #151515; color: #444; border-color: #222; cursor: not-allowed; }
-        .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; font-weight: bold; }
-        .vote-btn:disabled .btn-percent { color: #444; }
-        .vote-btn.my-choice .btn-percent { color: #fff; }
+        .vote-btn:disabled { background: rgba(20, 20, 20, 0.5); color: #555; border-color: rgba(255,255,255,0.05); }
+        .btn-percent { color: #00ffff; font-family: monospace; font-size: 18px; font-weight: bold; text-shadow: 0 0 5px #00ffff; }
+        .vote-btn:disabled .btn-percent { color: #555; text-shadow: none; }
+        .vote-btn.my-choice .btn-percent { color: #fff; text-shadow: none; }
         .vote-btn.winner-highlight .btn-percent { color: #00ffff; }
-        .footer { font-size: 11px; color: #444; margin-top: 35px; }
-        #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .footer { font-size: 11px; color: #666; margin-top: 35px; text-shadow: 0 1px 5px #000; }
+        #startOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 99999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .connect-btn { background: linear-gradient(135deg, #ff007f, #7f00ff); color: white; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 0 30px rgba(255, 0, 127, 0.5); text-transform: uppercase; animation: pulseConnect 1.5s infinite alternate; }
         @keyframes pulseConnect { from { transform: scale(1); } to { transform: scale(1.04); } }
     </style>
 </head>
 <body>
-
-    <!-- СТАРТОВАЯ ПЛАШКА ДЛЯ АКТИВАЦИИ АУДИО НА СМАРТФОНАХ -->
     <div id="startOverlay">
-        <h2 style="color: #ff007f; text-shadow: 0 0 10px #ff007f; margin-bottom: 30px; text-transform: uppercase; text-align: center; font-size: 24px;">Танцевальный Конструктор</h2>
+        <h2 style="color: #ff007f; text-shadow: 0 0 10px #ff007f; margin-bottom: 30px; text-transform: uppercase; text-align: center; font-size: 24px;">ESHBERY SHOW BALLET</h2>
         <button class="connect-btn" onclick="activateAudio()">Подключиться к шоу</button>
         <p style="color: #666; font-size: 14px; margin-top: 20px; text-align: center;">Нажмите для синхронизации графики и звука</p>
     </div>
 
     <div class="header">
-        <h1>Танцевальный Конструктор</h1>
+        <h1>ESHBERY SHOW BALLET</h1>
         <div id="statusText" class="status-box">Подключение к шоу...</div>
         <div id="mobileCountdown" class="mobile-timer">15</div>
     </div>
+    <div class="buttons-container" id="buttonsList"></div>
+    <div class="footer">Шоу-балет «ESHBERY» © 2026</div>
 
-    <div class="buttons-container" id="buttonsList">
-        <!-- Кнопки создаются здесь -->
-    </div>
-
-    <div class="footer">Шоу-балет «Танцевальный Конструктор» © 2026</div>
     <script>
-        let isVotingActive = false;
-        let hasVotedInThisRound = false;
-        let myChoiceId = "";
-        let hasVibratedInThisRound = false;
-        let lastTimerValue = -1;
-        let audioCtx = null;
-
+        let isVotingActive = false, hasVotedInThisRound = false, myChoiceId = "", hasVibratedInThisRound = false, lastTimerValue = -1, audioCtx = null;
         function playMetronomeSound() {
             if (!audioCtx) return;
             try {
-                let osc = audioCtx.createOscillator();
-                let gainNode = audioCtx.createGain();
-                osc.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                osc.type = 'triangle'; // Деревянный тембр стука
-                osc.frequency.value = 220; // Глухой "тук"
+                let osc = audioCtx.createOscillator(), gainNode = audioCtx.createGain();
+                osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+                osc.type = 'triangle'; osc.frequency.value = 220; 
                 gainNode.gain.setValueAtTime(0.6, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 0.05);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
             } catch(e) { console.log(e); }
         }
-
         function activateAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             document.getElementById('startOverlay').remove();
         }
-
         const secretCode = "aHR0cHM6Ly9kYW5jZS1jb25zdHJ1Y3Rvci1kZWZhdWx0LXJ0ZGIuZXVyb3BlLXdlc3QxLmZpcmViYXNlZGF0YWJhc2UuYXBw";
         const realUrl = atob(secretCode);
 
         function syncViewer() {
             fetch(realUrl + "/show.json").then(res => res.json()).then(showData => {
                 if (!showData) return;
-                const statusEl = document.getElementById('statusText');
-                const timerEl = document.getElementById('mobileCountdown');
-
+                const statusEl = document.getElementById('statusText'), timerEl = document.getElementById('mobileCountdown');
                 if (showData.status === "waiting") {
                     isVotingActive = false; hasVotedInThisRound = false; hasVibratedInThisRound = false; myChoiceId = ""; lastTimerValue = -1;
-                    statusEl.innerText = "ВНИМАНИЕ НА СЦЕНУ! ОЖИДАНИЕ СТАРТА...";
-                    statusEl.style.color = "#aaa"; timerEl.style.display = "none";
+                    statusEl.innerText = "ВНИМАНИЕ НА СЦЕНУ! ОЖИДАНИЕ СТАРТА..."; statusEl.style.color = "#aaa"; timerEl.style.display = "none";
                 } else if (showData.status === "active") {
                     isVotingActive = true; timerEl.style.display = "block"; timerEl.innerText = showData.timer;
                     if (showData.timer !== lastTimerValue) {
-                        lastTimerValue = showData.timer;
-                        playMetronomeSound(); // Ритмичные щелчки метронома
-                        if (!hasVibratedInThisRound) {
-                            hasVibratedInThisRound = true;
-                            if (navigator.vibrate) navigator.vibrate(200);
-                        }
+                        lastTimerValue = showData.timer; playMetronomeSound();
+                        if (!hasVibratedInThisRound) { hasVibratedInThisRound = true; if (navigator.vibrate) navigator.vibrate(200); }
                     }
                     if (!hasVotedInThisRound) { statusEl.innerText = "УСПЕЙ ПРОГОЛОСОВАТЬ!"; statusEl.style.color = "#ff007f"; }
                     else { statusEl.innerText = "ВАШ ГОЛОС УЧТЕН! СЛЕДИТЕ ЗА ПРОЦЕНТАМИ:"; statusEl.style.color = "#00ffff"; }
@@ -123,7 +107,7 @@
                         }
                     }
                     for (let key in options) {
-                        const opt = options[key]; const btn = document.getElementById("btn-" + key); const percentEl = document.getElementById("per-" + key);
+                        const opt = options[key], btn = document.getElementById("btn-" + key), percentEl = document.getElementById("per-" + key);
                         if (btn && percentEl) {
                             let percent = totalVotes > 0 ? Math.round((opt.votes || 0) / totalVotes * 100) : 0;
                             percentEl.innerText = percent + "%"; btn.classList.remove('winner-highlight');
@@ -141,19 +125,15 @@
                 });
             }).catch(e => console.log(e));
         }
-
         function castVote(id) {
             if (!isVotingActive || hasVotedInThisRound) return;
-            hasVotedInThisRound = true; myChoiceId = id;
-            if (navigator.vibrate) navigator.vibrate(50);
+            hasVotedInThisRound = true; myChoiceId = id; if (navigator.vibrate) navigator.vibrate(50);
             fetch(realUrl + "/options/" + id + "/votes.json").then(res => res.json()).then(currentVotes => {
                 let newVotes = (currentVotes || 0) + 1;
                 return fetch(realUrl + "/options/" + id + "/votes.json", { method: 'PUT', body: JSON.stringify(newVotes) });
             }).catch(e => console.log(e));
         }
-
-        setInterval(syncViewer, 1000);
-        syncViewer();
+        setInterval(syncViewer, 1000); syncViewer();
     </script>
 </body>
 </html>
